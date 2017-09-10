@@ -2,7 +2,6 @@ var net = require('net');
 var util = require('util');
 var http = require('http'),
     colors = require('colors'),
-    httpProxy = require('http-proxy'),
     url = require('url'),
 	querystring = require('querystring');
 
@@ -52,7 +51,7 @@ function connCloud(){
 
         clientForRoute.on('close', function() {
             logger.debug('智服云 Connection closed');
-            setTimeout(()=>{
+            setTimeout(function() {
                 connCloud()
             },2000)
         });
@@ -126,11 +125,11 @@ const tcpServer = net.createServer(function(sock) {
         logger.info('CLOSED: ' + sock.remoteAddress + ' ' + sock.remotePort);
     });
 
-}).listen(PORT, HOST,()=>{
+}).listen(PORT, HOST,function(){
     logger.info('Server listening on ' + tcpServer.address().address +':'+ tcpServer.address().port);
 });
 
-tcpServer.on('error', (err) => {
+tcpServer.on('error', function(err){
   logger.error(err)
 });
 
@@ -248,13 +247,13 @@ function url_to_option(urlstr,method,postData,headerSend) {
 
 function httpSend(urlstr,method,postData,header,callback) {
     // body...
-    var req = http.request(url_to_option(urlstr,method,postData,header), (res) => {
+    var req = http.request(url_to_option(urlstr,method,postData,header), function(res){
         var responseContent = '';
         res.setEncoding('utf8');
-        res.on('data', (chunk) => {
+        res.on('data', function(chunk){
             responseContent += chunk;
         });
-        res.on('end', () => {
+        res.on('end', function() {
             //console.log('response = ' + responseContent);
             if(callback != null){
                 callback(responseContent,null);
@@ -262,8 +261,7 @@ function httpSend(urlstr,method,postData,header,callback) {
         });
     });
 
-    req.on('error', (e) => {
-        console.log(`problem with request: ${e.message}`);
+    req.on('error', function(e) {
         if(callback != null){
             callback(null,e.message);
         }
