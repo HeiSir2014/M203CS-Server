@@ -17,7 +17,7 @@ log4js.configure({
   appenders: { server: { type: 'file', filename: 'log/server.log',"maxLogSize": 10485760,"numBackups": 20
  },console: { type: 'console' },stream: { type: 'file', filename: 'log/stream.log',"maxLogSize": 10485760,"numBackups": 20
  }},
-  categories: { default: { appenders: ['console','server'], level: 'debug' }}
+  categories: { default: { appenders: ['console','server'], level: 'debug' },stream:{appenders:['stream'],level: 'debug'}}
 });
 const logger = log4js.getLogger('server');
 const loggerStream = log4js.getLogger('stream');
