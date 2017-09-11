@@ -42,6 +42,7 @@ function connCloud(){
                 catch(e_rror){
                     logger.error(e_rror)
                 }
+                curSockForM30 = null;
             }
         });
 
@@ -123,6 +124,9 @@ const tcpServer = net.createServer(function(sock) {
 
     sock.on('close', function(data) {
         logger.info('CLOSED: ' + sock.remoteAddress + ' ' + sock.remotePort);
+    });
+    sock.on('error', function(err) {
+        logger.error(err);
     });
 
 }).listen(PORT, HOST,function(){
