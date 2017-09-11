@@ -1,5 +1,7 @@
 #!/bin/sh
 
+npm install fs
+npm install path
 npm install http
 npm install net
 npm install util
