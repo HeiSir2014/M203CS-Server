@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "- 此代码主要是对开发板发来的数据进行解析保存到本地，代码中使用了高德API对GPS坐标进行了转换，可以在高德地图和腾讯地图中进行显示。",
+  "main": "tcpserver.js",
+  "dependencies": {
+    "colors": "^1.1.2",
+    "crypto": "^0.0.3",
+    "eventemitter3": "^1.2.0",
+    "form-urlencoded": "^2.0.4",
+    "http": "^0.0.0",
+    "inspect": "^0.0.2",
+    "log4js": "^2.3.3",
+    "nodejs-websocket": "^1.6.0",
+    "requires-port": "^1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HeiSir2014/M203CS-Server.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HeiSir2014/M203CS-Server/issues"
+  },
+  "homepage": "https://github.com/HeiSir2014/M203CS-Server#readme"
+}

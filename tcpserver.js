@@ -3,7 +3,8 @@ var util = require('util');
 var http = require('http'),
     colors = require('colors'),
     url = require('url'),
-	querystring = require('querystring');
+    querystring = require('querystring'),
+    formurlencoded = require('form-urlencoded');
 
 var HOST = '0.0.0.0';
 var PORT = 8100;
@@ -87,11 +88,11 @@ const tcpServer = net.createServer(function(sock) {
             result.position != null && 
             result.position.Latitude != 0 && 
             result.position.Longitude != 0 && 
-            result.position.Latitude < 250 && 
-            result.position.Longitude < 100
+            result.position.Longitude < 250 && 
+            result.position.Latitude < 90
 			) {
             logger.info(result.id + ' time:' + result.time.toLocaleString() + 
-                ' Send Position(' + result.position.Latitude + ',' + result.position.Longitude+')')
+                ' Send Position(' + result.position.Longitude + ',' + result.position.Latitude +')')
             if (g_AllGPSData[result.id] == null) {
                 g_AllGPSData[result.id] = []
             }
@@ -112,6 +113,7 @@ const tcpServer = net.createServer(function(sock) {
                        result.position.gpsLong = result.position.Longitude
                        result.position.Latitude = gps.Latitude
                        result.position.Longitude = gps.Longitude
+                       pointAddForYingYan(result)
                        NotifyAllClient(result)
                        g_AllGPSData[result.id].push(result)
                        SaveFile();
@@ -185,7 +187,7 @@ function gpsToAmapLoc(gps,fun){
     if(gps == null)
         return
 
-    httpSend('http://restapi.amap.com/v3/assistant/coordinate/convert?key=b7d17e8052cdb0ad5a51ca02fd2afdb5&locations=' + gps.Latitude +',' + gps.Longitude +'&coordsys=gps'
+    httpSend('http://restapi.amap.com/v3/assistant/coordinate/convert?key=b7d17e8052cdb0ad5a51ca02fd2afdb5&locations=' + gps.Longitude +',' + gps.Latitude +'&coordsys=gps'
         ,null,null,null,function(data,error){
         try{
             if(error == null)
@@ -197,7 +199,7 @@ function gpsToAmapLoc(gps,fun){
                     var lr = loc.match(/([\d\.]{1,}),([\d\.]{1,})/i)
                     if(lr != null && lr.length >= 3){
                         if(fun != null)
-                            fun({Latitude:parseFloat(lr[1]),Longitude:parseFloat(lr[2])});
+                            fun({Longitude:parseFloat(lr[1]),Latitude:parseFloat(lr[2])});
                     }
                     else{
                         logger.error('gpsToAmapLoc convert fail')
@@ -234,6 +236,8 @@ function url_to_option(urlstr,method,postData,headerSend) {
         }
         header['Content-Type'] = 'application/x-www-form-urlencoded';
         header['Content-Length'] = Buffer.byteLength(postData);
+
+        retOpt['headers'] = header;
     }
     if ( headerSend != null ) {
         if( typeof(retOpt['headers']) === 'undefined' ){
@@ -263,6 +267,9 @@ function httpSend(urlstr,method,postData,header,callback) {
                 callback(responseContent,null);
             }
         });
+        res.on('error',function(err){
+
+        })
     });
 
     req.on('error', function(e) {
@@ -299,18 +306,18 @@ function parsePosition(data,src,offset){
     result.speed = 0
     result.arc = 0
     result.offset = offset
-    result.Latitude = data.value.readUInt32BE() / 1000000.0
-    result.Longitude = data.value.readUInt32BE(4) / 1000000.0
+    result.Longitude= data.value.readUInt32BE() / 1000000.0
+    result.Latitude = data.value.readUInt32BE(4) / 1000000.0
 	result.type = 'lbs'
     if(data.type == 0x5078 && data.length == 8) { //GPS 定位
         var tlvData = null;
         //ProSigStInit
         tlvData = parseTlv(src,offset)
-        result.speed = tlvData.value.readUInt16BE()
+        result.speed = tlvData.value.readUInt16BE() / 10.0
         offset = tlvData.offset
 
         tlvData = parseTlv(src,offset)
-        result.arc = tlvData.value.readUInt16BE()
+        result.arc = tlvData.value.readUInt16BE() / 100.0
         offset = tlvData.offset
 
         result.offset = offset
@@ -438,7 +445,7 @@ function convertLoc(){
                         gps.position.type = gps.type
                         delete gps.type
                     }
-
+                    pointAddForYingYan(gps,()=>{})
                     /*gpsToAmapLoc({Latitude:gps.position.Latitude,
                         Longitude:gps.position.Longitude},function(amapLoc){
                         gps.position.Latitude = amapLoc.Latitude
@@ -457,3 +464,53 @@ function convertLoc(){
     }
 }
 
+function entityAddForYingYan(sn,name,fun){
+    var postData = formurlencoded({
+        ak:'N3v3N6e2FmIX7A8d8N7shYp3a5OPISCD',
+        service_id:'150014',
+        entity_name:sn,
+        entity_desc:name
+    })
+    httpSend('http://yingyan.baidu.com/api/v3/entity/add','POST',postData,null,function(data,error){
+        if(error == null){
+            logger.info(data)
+            if(fun != null){
+                fun()
+            }
+        }
+        else{
+            logger.error(error)
+        }
+    })
+}
+
+function pointAddForYingYan(request,fun){
+    if (false && request.position.type != 'gps') {
+        return
+    }
+    var postData = formurlencoded({
+        ak:'', //Your AK http://lbsyun.baidu.com/apiconsole/key
+        service_id:'',    //Your ServiceId  http://lbsyun.baidu.com/trace/admin/service
+        entity_name:request.id,
+        latitude:request.position.gpsLat,
+        longitude:request.position.gpsLong,
+        loc_time:new Date(request.time).getTime()/1000,
+        coord_type_input:'wgs84',
+        speed:request.position.speed,
+        direction:request.position.arc
+    })
+    httpSend('http://yingyan.baidu.com/api/v3/track/addpoint','POST',postData,null,function(data,error){
+        if(error == null){
+            logger.info(data)
+            if(fun != null){
+                fun()
+            }
+        }
+        else{
+            logger.error(error)
+        }
+    })
+}
+
+//增加终端 只需要执行一次
+//entityAddForYingYan('0011613000FF','heisir',()=>{})
