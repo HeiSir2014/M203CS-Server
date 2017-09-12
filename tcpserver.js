@@ -497,7 +497,7 @@ function pointAddForYingYan(request,fun){
         loc_time:new Date(request.time).getTime()/1000,
         coord_type_input:'wgs84',
         speed:request.position.speed,
-        direction:request.position.arc
+        direction:parseInt(request.position.arc)
     })
     httpSend('http://yingyan.baidu.com/api/v3/track/addpoint','POST',postData,null,function(data,error){
         if(error == null){
