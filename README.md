@@ -5,10 +5,12 @@
 
 - 客户端调用可以通过websocket接口连接到此服务器，然后获取开发板的位置以及历史路径。
 ### Windows
-- 环境 npm nodejs npm下载(https://github.com/npm/npm/releases)
+- 环境准备npm、nodejs 
+- npm下载(https://github.com/npm/npm/releases)
+- nodejs 下载(https://nodejs.org/zh-cn/download/)
 - 运行以下命令下载modules。
 ```
-	npm install
+    npm install
 ```
 - 运行 RunServer.bat 就可以启动服务
 ### Linux
@@ -16,10 +18,10 @@
 - 我使用的是Ubuntu，使用以下命令安装npm、nodejs以及安装modules。
 ```
     sudo apt-get update
-	sudo apt-get install npm
-	curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-	sudo apt-get install -y nodejs
-	npm install
+    sudo apt-get install npm
+    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    npm install
 ```
 - 启动服务器
 ```
