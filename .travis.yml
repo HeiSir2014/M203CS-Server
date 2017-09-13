@@ -1,5 +1,6 @@
 language: node_js
 node_js:
   - "8"
-npm install
-npm test
+script:
+  - npm install
+  - npm test
