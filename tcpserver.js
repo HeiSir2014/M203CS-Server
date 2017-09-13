@@ -12,6 +12,7 @@ var nWebServerPort = 8101;
 var g_AllChromeClients = []
 var g_AllGPSData = {}
 var g_lastGPSData = {}
+var g_AllClientsOfSocket = {}
 
 const log4js = require('log4js');
 log4js.configure({
@@ -85,41 +86,53 @@ const tcpServer = net.createServer(function(sock) {
         //logger.debug('DATA ' + sock.remoteAddress + ': ' +  Buffer.from(data).toString('hex') );
         var result = parseData(data)
         if (result != null && 
-            result.position != null && 
-            result.position.Latitude != 0 && 
-            result.position.Longitude != 0 && 
-            result.position.Longitude < 250 && 
-            result.position.Latitude < 90
-			) {
-            logger.info(result.id + ' time:' + result.time.toLocaleString() + 
-                ' Send Position(' + result.position.Longitude + ',' + result.position.Latitude +')')
-            if (g_AllGPSData[result.id] == null) {
-                g_AllGPSData[result.id] = []
+            result.position != null
+            ) {
+            var id = result.id;
+            if (g_AllClientsOfSocket[id] == null) {
+                sendHeartTime(id,30)
             }
-            if (g_lastGPSData[result.id] == null) {
-                g_lastGPSData[result.id] = {}
-            }
-
-            if(g_AllGPSData[result.id].Latitude != result.position.Latitude || 
-                g_AllGPSData[result.id].Longitude != result.position.Longitude )
+            g_AllClientsOfSocket[id] = this;
+            var lat = result.position.Latitude;
+            var lng = result.position.Longitude;
+            if( lat != 0 &&
+                lng != 0 && 
+                lat < 180 &&
+                lng > -180 &&
+                lat < 90 &&
+                lng > -90)
             {
-
-                g_AllGPSData[result.id].Latitude = result.position.Latitude
-                g_AllGPSData[result.id].Longitude = result.position.Longitude
-
-                gpsToAmapLoc({Latitude:result.position.Latitude,
-                    Longitude:result.position.Longitude},function(gps){
-                       result.position.gpsLat = result.position.Latitude
-                       result.position.gpsLong = result.position.Longitude
-                       result.position.Latitude = gps.Latitude
-                       result.position.Longitude = gps.Longitude
-                       pointAddForYingYan(result)
-                       NotifyAllClient(result)
-                       g_AllGPSData[result.id].push(result)
-                       SaveFile();
-                })
                 
+                logger.info(result.id + ' time:' + result.time.toLocaleString() + 
+                    ' Send Position(' + lng + ',' + lat +')')
+                if (g_AllGPSData[id] == null) {
+                    g_AllGPSData[id] = []
+                }
+                if (g_lastGPSData[id] == null) {
+                    g_lastGPSData[id] = {}
+                }
+                
+                if(g_lastGPSData[id].Latitude != lat || 
+                    g_lastGPSData[id].Longitude != lng )
+                {
+                    g_lastGPSData[id].Latitude = lat
+                    g_lastGPSData[id].Longitude = lng
+                    gpsToAmapLoc({Latitude:lat,
+                        Longitude:lng},function(gps){
+                           result.position.Latitude = gps.Latitude
+                           result.position.Longitude = gps.Longitude
+                           NotifyAllClient(result)
+                           g_AllGPSData[id].push(result)
+                           SaveFile();
+                    })
+                }
+                pointAddForYingYan(result)
             }
+            else{
+                logger.error("Illegal latlng , "+ id + ' time:' + result.time.toLocaleString() + 
+                    ' latlng(' + result.position.Longitude + ',' + result.position.Latitude +')')
+            }
+            
         }
         //sock.write('OK');
     });
@@ -132,7 +145,7 @@ const tcpServer = net.createServer(function(sock) {
     });
 
 }).listen(PORT, HOST,function(){
-    logger.info('Server listening on ' + tcpServer.address().address +':'+ tcpServer.address().port);
+    logger.info('Start Server listening on ' + tcpServer.address().address + ':' + tcpServer.address().port);
 });
 
 tcpServer.on('error', function(err){
@@ -308,6 +321,8 @@ function parsePosition(data,src,offset){
     result.offset = offset
     result.Longitude= data.value.readUInt32BE() / 1000000.0
     result.Latitude = data.value.readUInt32BE(4) / 1000000.0
+    result.gpsLong = result.Longitude
+    result.gpsLat = result.Latitude
 	result.type = 'lbs'
     if(data.type == 0x5078 && data.length == 8) { //GPS 定位
         var tlvData = null;
@@ -385,6 +400,11 @@ function parseData(data){
 
     return null
 }
+
+function sendHeartTime(id,time){
+    
+}
+
 
 var fs = require('fs'),
 path = require('path');
@@ -489,8 +509,8 @@ function pointAddForYingYan(request,fun){
         return
     }
     var postData = formurlencoded({
-        ak:'', //Your AK http://lbsyun.baidu.com/apiconsole/key
-        service_id:'',    //Your ServiceId  http://lbsyun.baidu.com/trace/admin/service
+        ak:'N3v3N6e2FmIX7A8d8N7shYp3a5OPISCD',
+        service_id:'150014',
         entity_name:request.id,
         latitude:request.position.gpsLat,
         longitude:request.position.gpsLong,
