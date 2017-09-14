@@ -91,7 +91,7 @@ const tcpServer = net.createServer(function(sock) {
             var id = result.id;
             if (g_AllClientsOfSocket[id] == null) {
                 g_AllClientsOfSocket[id] = this;
-                sendHeartTime(id,30)
+                sendHeartTime(id,60)
             }
 
             g_AllClientsOfSocket[id] = this;
@@ -586,6 +586,40 @@ function SDI_CRC16(Buffer){
     return (uchCRCLo << 8 | uchCRCHi);
 }
 
+function Dec2Hex(num){
+    return parseInt(num.toString(10),16);
+}
+
+function WriteTimeToBuffer(buf,offset,value){
+    var dNow = value;
+    var nIdx = offset;
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getFullYear()-2000),nIdx);
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getMonth()+1),nIdx);
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getDate()),nIdx);
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getHours()),nIdx);
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getMinutes()),nIdx);
+    nIdx = buf.writeUInt8(Dec2Hex(dNow.getSeconds()),nIdx);
+    return nIdx;
+}
+
+function WriteTlvBuffer(buf,offset,type,value){
+    var nIdx = offset;
+    nIdx = buf.writeUInt16BE(type,nIdx);
+    nIdx = buf.writeUInt16BE(value.length,nIdx);
+    for (var i = 0; i < value.length; i++) {    //拷贝数据
+        nIdx = buf.writeUInt8(value.readUInt8(i),nIdx);
+    }
+    return nIdx;
+}
+
+function WriteTlvUInt16BE(buf,offset,type,value){
+    var nIdx = offset;
+    nIdx = buf.writeUInt16BE(type,nIdx);
+    nIdx = buf.writeUInt16BE(2,nIdx);
+    nIdx = buf.writeUInt16BE(value,nIdx);
+    return nIdx;
+}
+
 function sendHeartTime(id,time){
     if (id == null || id == '') {
         return;
@@ -594,9 +628,34 @@ function sendHeartTime(id,time){
     if (socket == null) {
         return
     }
-    var data = Buffer.from("7E7E232355544E0B0003170910192137002C00010006" + id +"A268000200" + time.toString(16), "hex");
-    var data2 = Buffer.from("7E7E232355544E0B0003170910192137002C00010006" + id +"A268000200" + time.toString(16) + "00070002"+SDI_CRC16(data).toString(16), "hex"); 
-    socket.write(data2);
+    try
+    {
+        var nBufMaxLen = 200;
+        var buf = new Buffer(nBufMaxLen);
+        var nIdx = 0;
+        var nLenIdx = 0;
+        nIdx = buf.writeUInt16BE(0x7E7E,nIdx);;             //起始标识
+        nIdx = buf.writeUInt32BE(0x23235554,nIdx);          //版本
+        nIdx = buf.writeUInt16BE(0x4E0B,nIdx);              //功能ID 
+        nIdx = buf.writeUInt16BE(0x0000,nIdx);              //包计数
+        nIdx = WriteTimeToBuffer(buf,nIdx,new Date());      //当前时间
+        nLenIdx = nIdx; nIdx += 2;                          //数据长度占位
+        nIdx = WriteTlvBuffer(buf,nIdx,0x0001,Buffer.from(id,'hex')); //开发板序列号 sn 
+
+        nIdx = WriteTlvUInt16BE(buf,nIdx,0xA268,time);      //设置心跳时长
+
+        //---- 数据封装完成，填充Length。Length在当前索引+6个字节，因为还有CRC校验。
+        var nDataLen = nIdx + 6;
+        buf.writeUInt16BE(nDataLen,nLenIdx);
+        //---- 计算CRC填充
+        nIdx = WriteTlvUInt16BE(buf,nIdx,0x0007,SDI_CRC16(buf.slice(0,nIdx)));
+        var data = buf.slice(0,nIdx); //截取需要发送的数据
+        delete buf;
+        socket.write(data);
+    }
+    catch(e){
+        logger.error(e);
+    }
 }
 
 //增加终端 只需要执行一次
