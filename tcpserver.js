@@ -166,7 +166,23 @@ var wsserver = ws.createServer(function (conn) {
            if (typeof obj.cmd != 'undefined') {
             var cmd = obj.cmd;
             if( cmd == 'req_gps' ){
-                var msg = JSON.stringify({cmd:'return_gps_all',data:g_AllGPSData});
+                var all = {};
+                var tNow = new Date().getTime();
+                for(var key in g_AllGPSData){
+                    if(typeof g_AllGPSData[key] == 'object'){
+                        var gpss = g_AllGPSData[key]
+                        all[key] = [];
+                        var allgps = all[key];
+                        for(var i = 0;i < gpss.length;i++){
+                            var t = new Date(gpss[i].time).getTime()
+                            if(tNow - t <= 86400000){
+                                allgps.push(gpss[i])
+                            }
+                        }
+                    }
+                }
+                
+                var msg = JSON.stringify({cmd:'return_gps_all',data:all});
                 conn.sendText(msg)
                 //SaveFile()
             }
