@@ -127,8 +127,9 @@ const tcpServer = net.createServer(function(sock) {
                            g_AllGPSData[id].push(result)
                            SaveFile();
                     })
+					pointAddForYingYan(result);
+					pointAddForHeiSir(result);
                 }
-                pointAddForYingYan(result)
             }
             else{
                 logger.error("Illegal latlng , "+ id + ' time:' + result.time.toLocaleString() + 
@@ -519,7 +520,7 @@ function entityAddForYingYan(sn,name,fun){
 }
 
 function pointAddForYingYan(request,fun){
-    if (false && request.position.type != 'gps') {
+    if (request.position.type != 'gps') {
         return
     }
     var postData = formurlencoded({
@@ -539,6 +540,48 @@ function pointAddForYingYan(request,fun){
             if(fun != null){
                 fun()
             }
+        }
+        else{
+            logger.error(error)
+        }
+    })
+}
+
+function pointAddForHeiSir(request,fun){
+    var req = request;
+	var f = fun;
+	//逆地理编码 通过百度的API接口。
+	httpSend('http://api.map.baidu.com/geocoder/v2/?coordtype=wgs84&location='+req.position.gpsLat+','+req.position.gpsLong+'&output=json&ak=N3v3N6e2FmIX7A8d8N7shYp3a5OPISCD',null,null,null,function(data,error){
+        if(error == null){
+			try{
+				var sJson = JSON.parse(data);
+				var postData = formurlencoded({
+					action:'reg_loc',
+					mac_id:req.id,
+					lat:req.position.gpsLat,
+					lng:req.position.gpsLong,
+					time:req.time,
+					coord_type:'wgs84',
+					type:req.position.type,
+					speed:req.position.speed,
+					direction:parseInt(req.position.arc),
+					desc:sJson.result.formatted_address
+				})
+				httpSend('http://heisir.cn/amap/gps/action.php','POST',postData,null,function(data2,error2){
+					if(error2 == null){
+						logger.info(data2)
+						if(f != null){
+							f();
+						}
+					}
+					else{
+						logger.error(error2)
+					}
+				})
+			}
+			catch(e){
+				 logger.error(e)
+			}
         }
         else{
             logger.error(error)
