@@ -126,9 +126,12 @@ const tcpServer = net.createServer(function(sock) {
                            NotifyAllClient(result)
                            g_AllGPSData[id].push(result)
                            SaveFile();
-                    })
 					pointAddForYingYan(result);
 					pointAddForHeiSir(result);
+                    })
+                }
+				else{
+					notifyOnlineForHeiSir(result);
                 }
             }
             else{
@@ -551,17 +554,17 @@ function pointAddForHeiSir(request,fun){
     var req = request;
 	var f = fun;
 	//逆地理编码 通过百度的API接口。
-	httpSend('http://api.map.baidu.com/geocoder/v2/?coordtype=wgs84&location='+req.position.gpsLat+','+req.position.gpsLong+'&output=json&ak=N3v3N6e2FmIX7A8d8N7shYp3a5OPISCD',null,null,null,function(data,error){
+	httpSend('http://api.map.baidu.com/geocoder/v2/?coordtype=gcj02&location='+req.position.Latitude+','+req.position.Longitude+'&output=json&ak=N3v3N6e2FmIX7A8d8N7shYp3a5OPISCD',null,null,null,function(data,error){
         if(error == null){
 			try{
 				var sJson = JSON.parse(data);
 				var postData = formurlencoded({
 					action:'reg_loc',
 					mac_id:req.id,
-					lat:req.position.gpsLat,
-					lng:req.position.gpsLong,
+					lat:req.position.Latitude,
+					lng:req.position.Longitude,
 					time:req.time,
-					coord_type:'wgs84',
+					coord_type:'gcj02',
 					type:req.position.type,
 					speed:req.position.speed,
 					direction:parseInt(req.position.arc),
@@ -587,6 +590,27 @@ function pointAddForHeiSir(request,fun){
             logger.error(error)
         }
     })
+}
+
+function notifyOnlineForHeiSir(request,fun){
+    var req = request;
+	var f = fun;
+	var postData = formurlencoded({
+		action:'notify_online',
+		mac_id:req.id,
+		time:req.time
+	})
+	httpSend('http://heisir.cn/amap/gps/action.php','POST',postData,null,function(data2,error2){
+		if(error2 == null){
+			logger.info(data2)
+			if(f != null){
+				f();
+			}
+		}
+		else{
+			logger.error(error2)
+		}
+	})
 }
 
 const auchCRCHi = [
